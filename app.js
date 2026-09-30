@@ -1,8 +1,14 @@
 const express = require('express');
+const fs = require('fs/promises');
 const app = express();
-const port = 3000;
+const port = 3002;
 
 app.use(express.json());
+
+function readFiledelay(filePath) {
+  return new Promise(resolve => setTimeout(resolve, 1500))
+    .then(() => fs.readFile(filePath, 'utf8'));
+}
 
 const products = [
   { "id": 1, "name": "Keyboard", "price": 49.99 },
