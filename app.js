@@ -1,35 +1,74 @@
+const { promises } = require('dns');
 const express = require('express');
-const fs = require('fs/promises');
+const fs=require("fs/promises");
+const path=require("path");
 const app = express();
-const port = 3002;
+const port = 3002; // Keeping your updated port 3002 to avoid conflicts
 
-app.use(express.json());
+const cache={}
 
-function readFiledelay(filePath) {
-  return new Promise(resolve => setTimeout(resolve, 1500))
-    .then(() => fs.readFile(filePath, 'utf8'));
+const pathToFile=path.join(__dirname,"db.json");
+
+async function readFile(){
+    try{
+        let data=await fs.readFile(pathToFile,"utf-8");
+        return JSON.parse(data);
+
+    }catch(err){
+        console.log(err);
+
+    }
+    
 }
+async function readFileWithDelay(){
+    await new Promise((resolve,reject)=>{setTimeout(resolve,1500)})
+    let products=await readFile();
+    return products;
 
-const products = [
-  { "id": 1, "name": "Keyboard", "price": 49.99 },
-  { "id": 2, "name": "Mouse", "price": 19.99 },
-  { "id": 3, "name": "Monitor", "price": 199 },
-  { "id": 4, "name": "Mouse", "price": 19 }
-];
+}
+app.get('/products',async (req, res) => {
+    try{
+        let key=req.url;
+        let value=cache[key];
+        if (value)
+            return res.json(value);
+        let products=await readFileWithDelay();
+        cache[key]=products;
 
-app.get('/products', (req, res) => {
-  res.json(products);
+        res.json(products);
+
+    }catch(err){
+        console.log(err);
+    }
+    
 });
 
-app.get('/products/:id', (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  const product = products.find(p => p.id === id);
-  
-  if (product) {
-    res.json(product);
-  } else {
-    res.status(404).json({ error: 'Product not found' });
-  }
+// /products
+// key=/products,value{/products:[]}
+// key=/products/1,value{/products:[],/products/1}
+
+
+
+
+
+app.get('/products/:id',async (req, res) => {
+    try{
+        let key=req.url;
+        let value=cache[key];
+        if (value)
+            return res.json(value);
+        let products=await readFile();
+        // cache[key]=products;
+        let {id}=req.params;
+        id=Number(id);
+        let product=products.find((item)=>{return item.id==id});
+        cache[key]=product
+        res.json(product);
+
+    }catch(err){
+        console.log(err);
+    }
+    
 });
 
 app.listen(port, () => {
